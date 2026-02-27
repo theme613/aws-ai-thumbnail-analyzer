@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Infrastructure for AI Thumbnail Analyzer: S3 Bucket + IAM User with Rekognition and S3 access'
+
+Resources:
+  ThumbnailBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - PUT
+              - POST
+            AllowedOrigins:
+              - '*'
+            MaxAge: 3000
+
+  ThumbnailAnalyzerUser:
+    Type: AWS::IAM::User
+    Properties: 
+      UserName: thumbnail-analyzer-app-user
+
+  ThumbnailAnalyzerPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ThumbnailAnalyzerAccessPolicy
+      Users:
+        - !Ref ThumbnailAnalyzerUser
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 
+              - s3:PutObject
+              - s3:GetObject
+            Resource: !Sub '${ThumbnailBucket.Arn}/*'
+          - Effect: Allow
+            Action:
+              - rekognition:DetectLabels
+              - rekognition:DetectText
+              - rekognition:DetectModerationLabels
+            Resource: '*'
+
+  ThumbnailAnalyzerAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref ThumbnailAnalyzerUser
+
+Outputs:
+  BucketName:
+    Description: 'Your S3_BUCKET_NAME for .env.local'
+    Value: !Ref ThumbnailBucket
+  AccessKeyId:
+    Description: 'Your AWS_ACCESS_KEY_ID for .env.local'
+    Value: !Ref ThumbnailAnalyzerAccessKey
+  SecretAccessKey:
+    Description: 'Your AWS_SECRET_ACCESS_KEY for .env.local'
+    Value: !GetAtt ThumbnailAnalyzerAccessKey.SecretAccessKey
